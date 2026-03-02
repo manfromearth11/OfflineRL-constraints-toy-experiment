@@ -1,0 +1,77 @@
+# Low Signal-to-Noise Ratio scenario
+#
+# REALISTIC MOTIVATION: Q-function exists but is unreliable
+# → must reduce Q dependence, but still want to find good actions
+#
+# KL dilemma: raise α (soften weights) → approaches BC → can't filter bad modes
+# OT advantage: reduce Q weight, increase OT reg → geometric filtering compensates
+#
+# Mode reward gaps are small:
+#   Good:     offset ~0,   r ≈ 0
+#   Mediocre: offset ~0.7, r ≈ -1
+#   Bad:      offset ~1.5, r ≈ -4.5
+# Q noise std = 3.0 → SNR for good vs mediocre ≈ 1/3 → unreliable
+
+env:
+  state_range: [-3, 3]
+  n_data: 15000
+  outlier_fraction: 0.15
+  modes:
+    # Good (30%): concentrated, near-optimal
+    - {offset: [0.0, 0.0],  std: 0.15, weight: 0.15}
+    - {offset: [0.1, -0.1], std: 0.15, weight: 0.15}
+    # Mediocre (30%): close to good, broad → overlaps with good in action space
+    - {offset: [0.5, 0.5],  std: 0.5, weight: 0.15}
+    - {offset: [-0.3, 0.7], std: 0.5, weight: 0.15}
+    # Bad (40%): further, very spread out
+    - {offset: [1.2, 1.2],  std: 0.8, weight: 0.2}
+    - {offset: [-0.8, 1.8], std: 0.8, weight: 0.2}
+
+training:
+  lr: 1.0e-3
+  batch_size: 256
+  n_epochs: 300
+  seed: 42
+
+corruption:
+  q_noise_std: 3.0
+  use_fitted_behavior: true
+
+bc: {}
+
+# KL: high α = soft weights = less Q dependence (forced by unreliable Q)
+kl_forward:
+  alpha: 3.0       # soft: Q is unreliable
+
+kl_reverse:
+  alpha: 3.0
+  beta: 0.1
+
+# OT: low Q weight (lam_q), high OT regularization (lam)
+# loss = -lam_q * E[Q] + lam * OT_cost
+ot_wasserstein:
+  lam: 5.0          # strong OT regularization
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_partial:
+  lam: 5.0
+  mass_fraction: 0.3   # only match nearest 30%
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_unbalanced:
+  lam: 5.0
+  entropic_reg: 0.05
+  marginal_reg: 0.3
+  n_ot_samples: 32
+  n_ot_states: 16
+
+viz:
+  n_grid: 50
+  representative_states: [[0, 0], [1, 1], [-1, 2], [2, -1]]
+  n_plot_samples: 500
+
+policy:
+  type: gmm
+  n_components: 5

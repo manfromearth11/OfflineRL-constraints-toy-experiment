@@ -1,0 +1,52 @@
+env:
+  state_range: [-3, 3]
+  n_data: 10000
+  behavior_mixture_weight: 0.5
+  good_mode_offset: [0.0, 0.0]
+  bad_mode_offset: [2.0, 2.0]
+  good_mode_std: 0.3
+  bad_mode_std: 0.5
+  outlier_fraction: 0.4   # 40% uniform random outlier actions
+
+training:
+  lr: 1.0e-3
+  batch_size: 256
+  n_epochs: 300
+  seed: 42
+
+# Corrupted scenario: noisy Q + fitted behavior model + outliers
+corruption:
+  q_noise_std: 5.0         # heavy Gaussian noise on Q values
+  use_fitted_behavior: true  # use fitted GMM instead of oracle
+
+bc: {}
+
+kl_forward:
+  alpha: 1.0
+
+kl_reverse:
+  alpha: 1.0
+  beta: 0.1
+
+ot_wasserstein:
+  lam: 1.0
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_partial:
+  lam: 1.0
+  mass_fraction: 0.5
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_unbalanced:
+  lam: 1.0
+  entropic_reg: 0.1
+  marginal_reg: 1.0
+  n_ot_samples: 32
+  n_ot_states: 16
+
+viz:
+  n_grid: 50
+  representative_states: [[0, 0], [1, 1], [-1, 2], [2, -1]]
+  n_plot_samples: 500

@@ -1,0 +1,74 @@
+# Reward-free Imitation Learning scenario
+#
+# WHY OT WINS HERE:
+# - No Q-function → KL advantage weighting is useless (all actions treated equally)
+# - Expert demos are concentrated near optimal (std=0.15)
+# - Non-expert + random demos are spread out widely
+# - BC/KL: fits ALL data → pulled toward spread-out noise
+# - Wasserstein: matches full distribution → same problem
+# - Partial OT (m=0.3): only matches the nearest/cheapest 30% of data
+#   → geometrically selects the concentrated expert cluster
+#   → ignores the spread-out noise
+# - Unbalanced OT: soft marginal relaxation down-weights distant actions
+
+env:
+  state_range: [-3, 3]
+  n_data: 15000
+  outlier_fraction: 0.0    # corruption built into mode structure
+  modes:
+    # Expert demonstrations (30%): concentrated, near-optimal
+    - {offset: [0.0, 0.0], std: 0.15, weight: 0.15}
+    - {offset: [0.2, -0.1], std: 0.15, weight: 0.15}
+    # Sub-expert demonstrations (30%): broader, somewhat off
+    - {offset: [1.0, 0.5], std: 0.6, weight: 0.15}
+    - {offset: [-0.5, 1.2], std: 0.6, weight: 0.15}
+    # Random/bad demonstrations (40%): very spread out
+    - {offset: [2.5, 2.5], std: 1.2, weight: 0.2}
+    - {offset: [-1.5, 3.0], std: 1.2, weight: 0.2}
+
+training:
+  lr: 1.0e-3
+  batch_size: 256
+  n_epochs: 300
+  seed: 42
+
+corruption:
+  q_noise_std: 0         # not used
+  use_fitted_behavior: true
+  reward_free: true      # key flag: no Q available
+
+bc: {}
+
+kl_forward:
+  alpha: 1.0
+
+kl_reverse:
+  alpha: 1.0
+  beta: 0.1
+
+ot_wasserstein:
+  lam: 10.0             # pure distribution matching (no Q)
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_partial:
+  lam: 10.0
+  mass_fraction: 0.3    # transport only top 30% → selects expert cluster
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_unbalanced:
+  lam: 10.0
+  entropic_reg: 0.05
+  marginal_reg: 0.3      # aggressive outlier rejection
+  n_ot_samples: 32
+  n_ot_states: 16
+
+viz:
+  n_grid: 50
+  representative_states: [[0, 0], [1, 1], [-1, 2], [2, -1]]
+  n_plot_samples: 500
+
+policy:
+  type: gmm
+  n_components: 5
