@@ -130,3 +130,29 @@ Artifacts:
 - `results/lambda_sweep_highmodes_overtrust_q10_s5_extra_best_seed_strip.png`
 - `results/lambda_sweep_highmodes_overtrust_q10_s5_best_comparison.png`
 - `results/ot_wins_dim_sweep_full_reward_curves.png`
+
+---
+
+## Final Conclusion
+Core takeaway:
+- This is not a universal `KL vs OT` winner problem. It is a trust-allocation problem between `Q signal` and `BC prior`.
+
+When KL-family methods are advantageous:
+- When Q quality is reasonably reliable (lower noise or stable ranking) and fast value-tilting is beneficial.
+- In our results, Forward KL outperformed OT in low-to-moderate noise regimes.
+
+When OT-family methods are advantageous:
+- When Q noise is high and misranking risk is substantial.
+- Especially in multimodal settings with far-away bad modes, geometry/mass constraints help prevent over-concentration on wrong modes.
+- In our results, OT consistently outperformed KL in high-noise/overtrust-KL settings and in the designed 3D/4D/5D/8D toy.
+
+Practical guide within OT variants:
+- Balanced Wasserstein is stable but can be overly conservative due to strict transport cost pressure.
+- Partial OT can be strong when mode selection is right, but can be more sensitive.
+- Unbalanced OT is often the most practical default under noisy Q because marginal relaxation improves robustness.
+
+How far to trust these results (scope):
+- These experiments provide causal evidence of regime-dependent behavior in toy low/moderate-dimensional offline settings.
+- They strongly support the selection principle, but do not guarantee absolute ranking on every real benchmark.
+- The transition boundary (where KL gives way to OT) can shift with architecture, critic stability, data quality, and hyperparameter ranges.
+- For real deployment, use `Q-quality diagnostics + lambda/ratio sweeps` before final method selection.
