@@ -1,0 +1,64 @@
+# High-mode setting with intentionally overconfident KL weighting.
+# Used to stress-test robustness under noisy Q.
+
+env:
+  state_range: [-3, 3]
+  n_data: 18000
+  outlier_fraction: 0.10
+  modes:
+    - {offset: [0.00, 0.00], std: 0.18, weight: 0.10}
+    - {offset: [0.15, -0.10], std: 0.18, weight: 0.10}
+    - {offset: [-0.10, 0.20], std: 0.20, weight: 0.10}
+    - {offset: [0.45, 0.35], std: 0.40, weight: 0.10}
+    - {offset: [-0.35, 0.60], std: 0.45, weight: 0.10}
+    - {offset: [0.65, -0.25], std: 0.45, weight: 0.10}
+    - {offset: [1.20, 1.10], std: 0.70, weight: 0.10}
+    - {offset: [-0.90, 1.60], std: 0.75, weight: 0.10}
+    - {offset: [1.70, 0.80], std: 0.80, weight: 0.10}
+    - {offset: [-1.20, 1.90], std: 0.85, weight: 0.10}
+
+training:
+  lr: 1.0e-3
+  batch_size: 256
+  n_epochs: 300
+  seed: 42
+
+corruption:
+  q_noise_std: 6.0
+  use_fitted_behavior: true
+
+bc: {}
+
+kl_forward:
+  alpha: 0.05
+
+kl_reverse:
+  alpha: 0.05
+  beta: 0.1
+
+ot_wasserstein:
+  lam: 5.0
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_partial:
+  lam: 5.0
+  mass_fraction: 0.5
+  n_ot_samples: 32
+  n_ot_states: 16
+
+ot_unbalanced:
+  lam: 5.0
+  entropic_reg: 0.05
+  marginal_reg: 0.3
+  n_ot_samples: 32
+  n_ot_states: 16
+
+viz:
+  n_grid: 50
+  representative_states: [[0, 0], [1, 1], [-1, 2], [2, -1]]
+  n_plot_samples: 500
+
+policy:
+  type: gmm
+  n_components: 6
