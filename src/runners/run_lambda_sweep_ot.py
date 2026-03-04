@@ -276,7 +276,6 @@ def plot_lambda_curve(
     ax.set_xscale("log", base=10)
     ax.set_xlabel("Lambda (OT regularization)")
     ax.set_ylabel("Mean reward (higher is better)")
-    ax.set_title("OT lambda sweep with BC/KL baselines")
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=9)
     plt.tight_layout()
@@ -306,7 +305,6 @@ def plot_lambda_heatmap(summary: List[dict], ot_methods: List[str], lambdas: Lis
     ax.set_yticks(np.arange(len(ot_methods)))
     ax.set_yticklabels([METHOD_LABELS.get(m, m) for m in ot_methods])
     ax.set_xlabel("Lambda")
-    ax.set_title("OT methods: lambda vs reward")
 
     for i in range(len(ot_methods)):
         for j in range(len(lambdas)):

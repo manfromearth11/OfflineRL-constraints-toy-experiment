@@ -650,8 +650,7 @@ def plot_reward_curves(summary: List[dict], out_path: str):
             ax.plot(x, y, marker="o", color=color, label=method)
 
         ax.set_xscale("log")
-        ax.set_title(f"dim={dim}")
-        ax.set_xlabel("lambda")
+        ax.set_xlabel(f"lambda (dim={dim})")
         ax.grid(True, alpha=0.3)
 
     axes[0].set_ylabel("Mean reward (higher better)")

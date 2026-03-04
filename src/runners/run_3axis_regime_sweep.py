@@ -209,7 +209,6 @@ def plot_single_metric_heatmaps(
 
             fig, ax = plt.subplots(figsize=(5.5, 4.0))
             im = ax.imshow(mat, cmap="RdYlGn", aspect="auto")
-            ax.set_title(f"{scenario}/{modality}: {metric_title}")
             ax.set_xticks(range(len(dims)), labels=[str(d) for d in dims])
             ax.set_yticks(range(len(q_levels)), labels=q_levels)
             ax.set_xlabel("dimension")

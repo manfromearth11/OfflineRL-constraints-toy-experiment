@@ -54,8 +54,6 @@ def plot_comparison_grid(results: dict, representative_states: list,
             mu = policy.mean_action(torch.tensor(s, dtype=torch.float32).unsqueeze(0)).detach().numpy()[0]
             ax.scatter([mu[0]], [mu[1]], c="C0", marker="x", s=100, zorder=5, label="Policy mean")
 
-            if i == 0:
-                ax.set_title(f"s=({s[0]:.0f},{s[1]:.0f})", fontsize=12)
             if j == 0:
                 ax.set_ylabel(name, fontsize=12, fontweight="bold")
             ax.set_xlim(a_opt[0] - 4, a_opt[0] + 6)
@@ -99,7 +97,6 @@ def plot_reward_heatmaps(results: dict, trainers: dict, n_grid: int = 50, save_p
         r, c = divmod(idx, ncols)
         ax = axes[r, c]
         im = ax.pcolormesh(xx, yy, reward_maps[name], cmap="RdYlGn", vmin=vmin, vmax=vmax)
-        ax.set_title(name, fontsize=12, fontweight="bold")
         ax.set_aspect("equal")
         plt.colorbar(im, ax=ax)
 
@@ -108,7 +105,6 @@ def plot_reward_heatmaps(results: dict, trainers: dict, n_grid: int = 50, save_p
         r, c = divmod(idx, ncols)
         axes[r, c].set_visible(False)
 
-    plt.suptitle("Expected Reward E[r(s, π(s))]", fontsize=14, fontweight="bold")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -145,14 +141,12 @@ def plot_quiver_comparison(results: dict, n_grid: int = 20, save_path: str = Non
         q = ax.quiver(grid[:, 0], grid[:, 1], mu[:, 0], mu[:, 1],
                       err, cmap="coolwarm", scale=30, label="Policy")
         plt.colorbar(q, ax=ax, label="||error||")
-        ax.set_title(name, fontsize=12, fontweight="bold")
         ax.set_aspect("equal")
 
     for idx in range(n_methods, nrows * ncols):
         r, c = divmod(idx, ncols)
         axes[r, c].set_visible(False)
 
-    plt.suptitle("Policy Mean Actions (colored by error)", fontsize=14, fontweight="bold")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
@@ -168,7 +162,6 @@ def plot_training_curves(results: dict, save_path: str = None):
         ax.plot(losses, label=name, alpha=0.8)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
-    ax.set_title("Training Curves")
     ax.legend()
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
@@ -211,14 +204,12 @@ def plot_partial_ot_sweep(policy_class, policy_kwargs, env_config, dataset, trai
         ax.scatter(a_behav[:, 0], a_behav[:, 1], c="gray", alpha=0.15, s=5, label="Behavior")
         ax.scatter(a_policy[:, 0], a_policy[:, 1], c="C0", alpha=0.3, s=5, label="Policy")
         ax.scatter([a_opt[0]], [a_opt[1]], c="red", marker="*", s=200, zorder=5, label="Optimal")
-        ax.set_title(f"m = {m}", fontsize=14, fontweight="bold")
         ax.set_xlim(a_opt[0] - 4, a_opt[0] + 6)
         ax.set_ylim(a_opt[1] - 4, a_opt[1] + 6)
         ax.set_aspect("equal")
         if idx == 0:
             ax.legend(fontsize=8)
 
-    plt.suptitle("Partial OT: Effect of Mass Fraction", fontsize=14, fontweight="bold")
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches="tight")
