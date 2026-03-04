@@ -70,6 +70,9 @@ Policy family in this toy:
 
 Note:
 - `reverse_kl` is now wired into the 4-axis runner and reward-curve plots.
+- In reward-curve plots, the dashed baseline label is per-dimension:
+- `KL best(f)` if forward KL is higher.
+- `KL best(r)` if reverse KL is higher.
 - The numeric tables in this report are from the previously completed run (forward-KL-referenced grid).
 - To refresh all numbers with reverse-KL columns included everywhere, rerun `full4`.
 
@@ -87,6 +90,10 @@ Main outputs:
 - Scenario-modality heatmaps: `*_heatmap_<scenario>_<modality>_pot.png`, `*_heatmap_<scenario>_<modality>_l2.png`
 
 ## 7) Quantitative Results (108 Cells)
+
+Notation used in this section:
+- `KL best(f)` = `forward_kl_mean_reward`
+- `KL best(r)` = `reverse_kl_mean_reward`
 
 ### Overall
 
@@ -135,6 +142,23 @@ Main outputs:
 | Cells with `L2 > UOT` | `68` |
 | Cells with `UOT > L2` | `40` |
 | Cells with `|L2-UOT| < 0.005` | `108 / 108` |
+
+### UOT vs L2 head-to-head by Q quality
+
+| Q quality | `L2 > UOT` | `UOT > L2` | Mean `(L2 - UOT)` |
+|---|---:|---:|---:|
+| `clean` | `19` | `17` | `-0.00032` |
+| `mid` | `15` | `21` | `-0.00009` |
+| `noisy` | `34` | `2` | `+0.00216` |
+
+### UOT vs L2 head-to-head by scenario
+
+| Scenario | `L2 > UOT` | `UOT > L2` | Mean `(L2 - UOT)` |
+|---|---:|---:|---:|
+| `baseline` | `16` | `11` | `+0.00044` |
+| `good_shift` | `19` | `8` | `+0.00085` |
+| `rotated` | `16` | `11` | `+0.00047` |
+| `anchor_corrupt` | `17` | `10` | `+0.00056` |
 
 ## 8) Analysis
 

@@ -683,15 +683,16 @@ def plot_reward_curves(summary: List[dict], out_path: str):
     for ax, dim in zip(axes, dims):
         rows = [r for r in summary if int(r["dim"]) == dim]
         fkl = next(r for r in rows if r["method"] == "forward_kl")
-        ax.axhline(fkl["mean_reward_mean"], linestyle="--", color="black", label="Forward KL")
         rkl_rows = [r for r in rows if r["method"] == "reverse_kl"]
-        if rkl_rows:
-            ax.axhline(
-                rkl_rows[0]["mean_reward_mean"],
-                linestyle=":",
-                color="#555555",
-                label="Reverse KL",
-            )
+        if rkl_rows and rkl_rows[0]["mean_reward_mean"] > fkl["mean_reward_mean"]:
+            kl_best = rkl_rows[0]["mean_reward_mean"]
+            kl_label = "KL best(r)"
+            kl_color = "#555555"
+        else:
+            kl_best = fkl["mean_reward_mean"]
+            kl_label = "KL best(f)"
+            kl_color = "black"
+        ax.axhline(kl_best, linestyle="--", color=kl_color, label=kl_label)
 
         for method, color in curves:
             rr = sorted([r for r in rows if r["method"] == method], key=lambda x: x["lambda"])
@@ -706,9 +707,26 @@ def plot_reward_curves(summary: List[dict], out_path: str):
         ax.grid(True, alpha=0.3)
 
     axes[0].set_ylabel("Mean reward (higher better)")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=5)
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
+    # Collect unique legend entries across all subplots.
+    handles, labels = [], []
+    seen = set()
+    for ax in axes:
+        h, l = ax.get_legend_handles_labels()
+        for hh, ll in zip(h, l):
+            if ll in seen:
+                continue
+            seen.add(ll)
+            handles.append(hh)
+            labels.append(ll)
+    fig.legend(
+        handles,
+        labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.02),
+        ncol=min(3, len(labels)),
+        frameon=True,
+    )
+    fig.tight_layout(rect=[0, 0.08, 1, 1])
     plt.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
     print(f"Saved: {out_path}")
