@@ -183,7 +183,7 @@ def plot_partial_ot_sweep(policy_class, policy_kwargs, env_config, dataset, trai
                           representative_state=(0, 0), n_samples=500, save_path=None):
     """Show how partial OT policy changes as mass_fraction varies."""
     from src.models.policy_net import GaussianPolicy
-    from src.methods.ot_partial import PartialOTPolicy
+    from src.methods.ppl import PartialOTPolicy
     from src.training.trainer import Trainer
 
     s = np.array(representative_state)

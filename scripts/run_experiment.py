@@ -1,138 +1,138 @@
-"""Main experiment script: train all methods and generate comparison plots."""
+#!/usr/bin/env python3
+"""Single script entrypoint for all experiments."""
 
-import os
+from __future__ import annotations
+
+import argparse
+import subprocess
 import sys
 from pathlib import Path
 
-import yaml
-import torch
-import numpy as np
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.env.bandit_env import generate_dataset
-from src.models.policy_net import GaussianPolicy
-from src.models.behavior_model import BehaviorModel
-from src.methods.bc import BehavioralCloning
-from src.methods.kl_forward import ForwardKLPolicy
-from src.methods.kl_reverse import ReverseKLPolicy
-from src.methods.ot_wasserstein import WassersteinPolicy
-from src.methods.ot_partial import PartialOTPolicy
-from src.methods.ot_unbalanced import UnbalancedOTPolicy
-from src.training.trainer import Trainer
-from src.visualization.plots import (
-    plot_comparison_grid,
-    plot_reward_heatmaps,
-    plot_quiver_comparison,
-    plot_training_curves,
-    plot_partial_ot_sweep,
-)
+RUN_3AXIS = PROJECT_ROOT / "src" / "runners" / "run_3axis_regime_sweep.py"
+RUN_LAMBDA = PROJECT_ROOT / "src" / "runners" / "run_lambda_sweep_ot.py"
 
 
-def load_config(path: str = "configs/default.yaml") -> dict:
-    with open(path) as f:
-        return yaml.safe_load(f)
+def run(cmd):
+    print("=" * 88)
+    print(" ".join(cmd))
+    subprocess.run(cmd, check=True, cwd=str(PROJECT_ROOT))
 
 
-def main():
-    config = load_config()
-    env_config = config["env"]
-    train_config = config["training"]
-    viz_config = config["viz"]
-
-    seed = train_config.get("seed", 42)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    os.makedirs("results", exist_ok=True)
-
-    # Generate dataset
-    print("Generating dataset...")
-    dataset = generate_dataset(env_config, seed=seed)
-    print(f"  States: {dataset['states'].shape}, Actions: {dataset['actions'].shape}")
-    print(f"  Mean reward: {dataset['rewards'].mean():.4f}")
-
-    behavior_model = BehaviorModel(env_config)
-
-    # Define methods
-    def make_methods():
-        methods = {}
-
-        # BC
-        policy_bc = GaussianPolicy()
-        methods["BC"] = BehavioralCloning(policy_bc, config.get("bc", {}))
-
-        # Forward KL
-        policy_fkl = GaussianPolicy()
-        methods["Forward KL"] = ForwardKLPolicy(policy_fkl, config.get("kl_forward", {}))
-
-        # Reverse KL
-        policy_rkl = GaussianPolicy()
-        methods["Reverse KL"] = ReverseKLPolicy(policy_rkl, config.get("kl_reverse", {}), behavior_model)
-
-        # Wasserstein
-        policy_w2 = GaussianPolicy()
-        methods["Wasserstein"] = WassersteinPolicy(policy_w2, config.get("ot_wasserstein", {}), env_config)
-
-        # Partial OT
-        policy_pot = GaussianPolicy()
-        methods["Partial OT"] = PartialOTPolicy(policy_pot, config.get("ot_partial", {}), env_config)
-
-        # Unbalanced OT
-        policy_uot = GaussianPolicy()
-        methods["Unbalanced OT"] = UnbalancedOTPolicy(policy_uot, config.get("ot_unbalanced", {}), env_config)
-
-        return methods
-
-    methods = make_methods()
-
-    # Train all methods
-    results = {}
-    trainers = {}
-    for name, method in methods.items():
-        print(f"\nTraining {name}...")
-        trainer = Trainer(method, dataset, train_config)
-        losses = trainer.train()
-        results[name] = {"policy": method.policy, "losses": losses}
-        trainers[name] = trainer
-        print(f"  Final loss: {losses[-1]:.4f}")
-
-    # Evaluate mean reward
-    print("\n--- Mean Reward E[r(s, pi(s))] ---")
-    from src.visualization.plots import make_state_grid
-    grid, _, _ = make_state_grid(n=viz_config.get("n_grid", 50))
-    s_grid = torch.tensor(grid, dtype=torch.float32)
-    for name, trainer in trainers.items():
-        mean_r = trainer.evaluate_reward(s_grid, n_samples=100).mean().item()
-        print(f"  {name}: {mean_r:.4f}")
-
-    # Generate plots
-    print("\nGenerating plots...")
-
-    rep_states = viz_config.get("representative_states", [[0, 0], [1, 1], [-1, 2], [2, -1]])
-    plot_comparison_grid(results, rep_states, env_config,
-                         n_samples=viz_config.get("n_plot_samples", 500),
-                         save_path="results/comparison_grid.png")
-
-    plot_reward_heatmaps(results, trainers,
-                         n_grid=viz_config.get("n_grid", 50),
-                         save_path="results/reward_heatmaps.png")
-
-    plot_quiver_comparison(results, n_grid=20, save_path="results/quiver_comparison.png")
-
-    plot_training_curves(results, save_path="results/training_curves.png")
-
-    print("\nRunning Partial OT sweep...")
-    plot_partial_ot_sweep(
-        GaussianPolicy, {}, env_config, dataset, {**train_config, **config.get("ot_partial", {})},
-        mass_fractions=(0.3, 0.5, 0.7, 1.0),
-        representative_state=rep_states[0],
-        save_path="results/partial_ot_sweep.png",
+def run_smoke4(args, py):
+    run(
+        [
+            py,
+            str(RUN_3AXIS),
+            "--base-config",
+            args.base_config,
+            "--dims",
+            "2,4",
+            "--seeds",
+            "0",
+            "--epochs",
+            "2",
+            "--n-data",
+            "3000",
+            "--scenarios",
+            "baseline",
+            "--modalities",
+            "mid",
+            "--q-levels",
+            "mid",
+            "--scenario-level",
+            "moderate",
+            "--output-prefix",
+            f"{args.output_prefix}_smoke4",
+            "--reset-results",
+        ]
     )
 
-    print("\nDone! All plots saved to results/")
+
+def run_full4(args, py):
+    run(
+        [
+            py,
+            str(RUN_3AXIS),
+            "--base-config",
+            args.base_config,
+            "--dims",
+            args.dims,
+            "--seeds",
+            args.seeds,
+            "--epochs",
+            str(args.epochs),
+            "--n-data",
+            str(args.n_data),
+            "--scenarios",
+            args.scenarios,
+            "--modalities",
+            "low,mid,high",
+            "--q-levels",
+            "clean,mid,noisy",
+            "--scenario-level",
+            "moderate",
+            "--output-prefix",
+            args.output_prefix,
+            "--reset-results",
+        ]
+    )
+
+
+def run_lambda(args, py):
+    run(
+        [
+            py,
+            str(RUN_LAMBDA),
+            "--config",
+            args.lambda_config,
+            "--lambdas",
+            args.lambdas,
+            "--ot-methods",
+            args.ot_methods,
+            "--output-prefix",
+            args.lambda_output_prefix,
+        ]
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Unified experiment runner")
+    parser.add_argument(
+        "--mode",
+        choices=["smoke", "full", "all", "lambda", "smoke4", "full4"],
+        default="smoke4",
+    )
+
+    parser.add_argument("--base-config", type=str, default="configs/ot_wins_dim_sweep.yaml")
+    parser.add_argument("--dims", type=str, default="2,4,8")
+    parser.add_argument("--seeds", type=str, default="0,1,2")
+    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--n-data", type=int, default=15000)
+    parser.add_argument("--scenarios", type=str, default="baseline,good_shift,rotated,anchor_corrupt")
+    parser.add_argument("--output-prefix", type=str, default="regime_4axis_scenario_balanced")
+
+    parser.add_argument("--lambda-config", type=str, default="configs/multimodal.yaml")
+    parser.add_argument("--lambdas", type=str, default="0.1,0.3,1,3,10")
+    parser.add_argument("--ot-methods", type=str, default="wasserstein,partial_ot,unbalanced_ot,l2_constraint")
+    parser.add_argument("--lambda-output-prefix", type=str, default="lambda_sweep_pot_l2")
+    args = parser.parse_args()
+
+    py = sys.executable
+
+    if args.mode == "smoke":
+        run_smoke4(args, py)
+    elif args.mode == "full":
+        run_full4(args, py)
+    elif args.mode == "all":
+        run_smoke4(args, py)
+        run_full4(args, py)
+    elif args.mode == "smoke4":
+        run_smoke4(args, py)
+    elif args.mode == "full4":
+        run_full4(args, py)
+    elif args.mode == "lambda":
+        run_lambda(args, py)
 
 
 if __name__ == "__main__":

@@ -1,211 +1,219 @@
-# KL vs OT in Offline RL: Win/Loss Regimes by Signal Trust
+# OfflineRL Toy Reboot: 4-Axis Results (Balanced)
 
-## Core message
-This is not a universal KL-vs-OT ranking problem.
-It is a **signal-trust allocation problem** between:
-- Q signal (value preference)
-- BC prior (behavior-distribution prior)
+This README summarizes the completed reboot run on **March 4, 2026**.
 
-## Policy architecture (important)
-No, these runs are **not all Gaussian policy**.
-For the key experiments below, all methods use the same **GMM policy** (`policy.type: gmm`, `n_components: 6`) for fairness.
+- Main runner: `scripts/run_experiment.py`
+- Final prefix: `regime_4axis_scenario_balanced`
+- Full grid: `results/regime_4axis_scenario_balanced_grid.csv`
 
----
+## 1) Four Axes (explicit list)
 
-## Noise scale in practical terms
-In this toy benchmark, mode reward gaps are O(1).
-- `q_noise_std ~ 2-4`: moderate corruption
-- `q_noise_std ~ 6+`: severe corruption
-- `q_noise_std ~ 10`: stress-test level (useful to expose robustness boundaries)
+1. `scenario` (moderate profile)
+- `baseline`
+- `good_shift`
+- `rotated`
+- `anchor_corrupt`
 
----
+2. `modality`
+- `low`
+- `mid`
+- `high`
 
-## Case A (Loss for OT): KL-favored regime
-Setting:
-- Config: `configs/high_modes_realistic.yaml`
-- 10 modes, moderate noise `q_noise_std=2.0`
-- Seeds=5, epochs=50
+3. `Q quality`
+- `clean`
+- `mid`
+- `noisy`
 
-Key numbers (mean reward, higher is better):
-- Forward KL: `-0.4729`
-- Reverse KL: `-0.5582`
-- Best Wasserstein: `-1.2371` (lambda=3)
-- Best Partial OT: `-1.2925` (lambda=0.3)
-- Best Unbalanced OT: `-0.7502` (lambda=1)
+4. `action dimension`
+- `2`
+- `4`
+- `8`
 
-Conclusion:
-- In this regime, KL (especially Forward KL) is clearly better than all OT families.
+Total cells:
+- `4 x 3 x 3 x 3 = 108`
 
-Plots:
-- ![Loss curve](./results/lambda_sweep_highmodes_realistic_q2_s5_curve.png)
-- ![Loss grouped bar](./results/lambda_sweep_highmodes_realistic_q2_s5_extra_grouped_bar.png)
-- ![Loss seed strip](./results/lambda_sweep_highmodes_realistic_q2_s5_extra_best_seed_strip.png)
-- ![Loss comparison grid](./results/lambda_sweep_highmodes_realistic_q2_s5_best_comparison.png)
+## 2) What Each Scenario Means
 
----
+All scenario knobs are applied on top of the same multimodal behavior template.
 
-## Case B (Win for OT): OT-favored regime (all OT > both KL)
-Setting:
-- Config: `configs/high_modes_kl_overtrust.yaml`
-- 10 modes, severe noise `q_noise_std=10.0`
-- Seeds=5, epochs=50
+| Scenario | Knobs | Meaning |
+|---|---|---|
+| `baseline` | `mean_shift=0.0`, `reward_center_shift=0.0`, `anisotropy_ratio=1.0`, `rotation_deg=0.0`, `l2_anchor_noise_std=0.0` | Reference setting. No geometric distortion, no anchor corruption. |
+| `good_shift` | `mean_shift=+1.0` (first action axis), others same as baseline | Moves the good mode center away from the origin along axis-1. Tests robustness when behavior geometry is shifted. |
+| `rotated` | `anisotropy_ratio=3.0`, `rotation_deg=35.0` (first two axes), others baseline | Applies anisotropic covariance + rotation to behavior sampling noise. Tests geometry mismatch and directional coupling effects. |
+| `anchor_corrupt` | `l2_anchor_noise_std=0.35`, others baseline | Corrupts only the L2 anchor (`a_beta + sigma*noise`). Tests sensitivity of direct L2 anchoring. |
 
-Key numbers (mean reward, higher is better):
-- Forward KL: `-1.4055`
-- Reverse KL: `-1.9215`
-- Best Wasserstein: `-1.2613` (lambda=0.1)
-- Best Partial OT: `-0.9084` (lambda=1.0)
-- Best Unbalanced OT: `-0.7552` (lambda=0.3)
+### 2D sketch (quick intuition)
 
-Conclusion:
-- In this high-noise/overtrust-KL regime, **all OT families beat both KL baselines**.
+`results/scenario_2d_overview_moderate.png`
 
-Recall signal at best lambda (good-mode recall at `s=(0,0)`, strict threshold):
-- Forward KL: `0.533`
-- Reverse KL: `0.133`
-- Wasserstein (best): `0.467`
-- Partial OT (best): `1.000`
-- Unbalanced OT (best): `0.933`
+![2D scenario overview](results/scenario_2d_overview_moderate.png)
 
-Plots:
-- ![Win curve](./results/lambda_sweep_highmodes_overtrust_q10_s5_curve.png)
-- ![Win grouped bar](./results/lambda_sweep_highmodes_overtrust_q10_s5_extra_grouped_bar.png)
-- ![Win seed strip](./results/lambda_sweep_highmodes_overtrust_q10_s5_extra_best_seed_strip.png)
-- ![Win comparison grid](./results/lambda_sweep_highmodes_overtrust_q10_s5_best_comparison.png)
+## 3) Other Axis Profiles Used
 
----
+### Modality profiles
 
-## Case C (Designed OT-win Toy): 3D/4D/5D/8D all-OT-beats-KL
-Purpose:
-- Build a structural testbed where KL exponential reweighting is vulnerable to bad-mode misranking.
-- Use geometry + mass control in OT (Wasserstein/Partial/Unbalanced) to preserve robust behavior.
+| Modality | Offsets `(mediocre,bad)` | Stds `(good,mediocre,bad)` | Weights `(good, med+, med-, bad+, bad-)` |
+|---|---|---|---|
+| `low` | `(0.4, 2.5)` | `(0.12, 0.50, 0.50)` | `(0.45, 0.225, 0.225, 0.05, 0.05)` |
+| `mid` | `(0.8, 5.0)` | `(0.10, 0.40, 0.20)` | `(0.20, 0.15, 0.15, 0.25, 0.25)` |
+| `high` | `(1.0, 6.0)` | `(0.08, 0.35, 0.15)` | `(0.10, 0.10, 0.10, 0.35, 0.35)` |
 
-Setting:
-- Config: `configs/ot_wins_dim_sweep.yaml`
-- Dims: `3, 4, 5, 8`
-- Seeds: `3` (`[0,1,2]`)
-- Noise/corruption: `q_noise_std=5.0`, `q_bias_bad=1.0`, `bad_spike_prob=0.01`, `bad_spike_value=10.0`
+### Q-quality profiles
 
-Result summary (mean reward, higher is better):
+| Q quality | `q_noise_std` | `q_bias_bad` | `bad_spike_prob` | `bad_spike_value` |
+|---|---:|---:|---:|---:|
+| `clean` | 0.0 | 0.0 | 0.0 | 0.0 |
+| `mid` | 2.0 | 0.3 | 0.0 | 0.0 |
+| `noisy` | 5.0 | 1.0 | 0.01 | 10.0 |
 
-| Dim | Forward KL | Best Wasserstein (lambda) | Best Partial OT (lambda) | Best Unbalanced OT (lambda) | all_ot_beat_kl |
-|---|---:|---:|---:|---:|---:|
-| 3 | -0.4751 | -0.1127 (0.03) | -0.1107 (0.03) | -0.1112 (0.05) | 1 |
-| 4 | -0.5265 | -0.1496 (0.03) | -0.1472 (0.05) | -0.1479 (0.05) | 1 |
-| 5 | -0.5783 | -0.1872 (0.03) | -0.1840 (0.03) | -0.1845 (0.03) | 1 |
-| 8 | -0.6731 | -0.2977 (0.03) | -0.2951 (0.03) | -0.2961 (0.10) | 1 |
+## 4) Methods Compared
 
-Conclusion:
-- In this designed stress regime, OT variants consistently outperform Forward KL across all tested dimensions.
-- The result supports the trust-allocation view: under corrupted Q ranking, BC-anchored transport regularization is more stable.
+- `bc`
+- `forward_kl`
+- `wasserstein`
+- `partial_ot` (potential-game replacement, PPL-style)
+- `unbalanced_ot`
+- `l2_constraint`
 
-Plots:
-- ![OT wins dim sweep reward curves](./results/ot_wins_dim_sweep_full_reward_curves.png)
+All policies in this toy are **state-free static diagonal Gaussian** policies.
 
-Artifacts:
-- `results/ot_wins_dim_sweep_full_raw.csv`
-- `results/ot_wins_dim_sweep_full_summary.csv`
-- `results/ot_wins_dim_sweep_full_winner_table.csv`
-- `results/ot_wins_dim_sweep_full_reward_curves.png`
+## 5) Balanced Budget
 
----
+- Seeds: `0,1,2`
+- Epochs: `30`
+- Dataset size: `15000`
+- Dimensions: `2,4,8`
 
-## Case D (3-axis check): modality x Q quality x dimension
-Question:
-- "Does OT still win in high dimensions when noise is absent?"
-- "Can we inspect all three axes: modality, Q quality, dimension?"
+## 6) Final Results (108 Cells)
 
-Answer from direct runs:
-- In clean-Q runs (`noise=bias=spike=0`), OT does **not** win, including 8D.
-- As Q quality degrades, the winner transitions from KL to OT.
-- This transition happens earlier when modality is harder.
+### Overall summary
 
-Direct clean-Q evidence (`results/ot_wins_dim_sweep_cleanq_winner_table.csv`):
-- 3D: KL `-0.0592` vs best OT `-0.1103` (`all_ot_beat_kl=0`)
-- 4D: KL `-0.0649` vs best OT `-0.1474` (`all_ot_beat_kl=0`)
-- 5D: KL `-0.0724` vs best OT `-0.1832` (`all_ot_beat_kl=0`)
-- 8D: KL `-0.0987` vs best OT `-0.2959` (`all_ot_beat_kl=0`)
+| Metric | Value |
+|---|---:|
+| Mean `best_ot_minus_kl` | `+0.1548` |
+| Mean `best_l2_minus_kl` | `+0.1553` |
+| Mean `best_pot_minus_kl` | `+0.0606` |
+| Cells where `UOT > KL` | `68 / 108` |
+| Cells where `L2 > KL` | `68 / 108` |
+| Cells where `all_ot_beat_kl = 1` | `59 / 108` |
+| Best constrained winner count: `l2_constraint` | `68` |
+| Best constrained winner count: `unbalanced_ot` | `40` |
+| Best constrained winner count: `wasserstein`, `partial_ot` | `0`, `0` |
 
-3-axis sweep setup (quick map):
-- Script: `scripts/run_3axis_regime_sweep.py`
-- Output: `results/regime_3axis_quick_grid.csv`
-- Axes:
-  - modality: `low`, `mid`, `high`
-  - Q quality: `clean`, `mid`, `noisy`
-  - dimension: `3, 4, 5, 8`
+### By scenario (27 cells each)
 
-OT all-win counts (`all_ot_beat_kl=1`) out of 4 dimensions:
-- low modality: `clean 0/4`, `mid 0/4`, `noisy 4/4`
-- mid modality: `clean 0/4`, `mid 1/4`, `noisy 4/4`
-- high modality: `clean 0/4`, `mid 3/4`, `noisy 4/4`
+| Scenario | `UOT > KL` | `L2 > KL` | Mean `best_ot - KL` | Mean `best_l2 - KL` |
+|---|---:|---:|---:|---:|
+| `baseline` | 14 | 14 | `+0.0361` | `+0.0365` |
+| `good_shift` | 27 | 27 | `+0.4951` | `+0.4958` |
+| `rotated` | 13 | 13 | `+0.0405` | `+0.0410` |
+| `anchor_corrupt` | 14 | 14 | `+0.0474` | `+0.0480` |
 
-Mean `best(OT)-KL` across all modality x dimension cells:
-- clean Q: `-0.1555` (KL favored)
-- mid Q: `-0.0107` (near boundary)
-- noisy Q: `+0.2086` (OT favored)
+### By Q quality (36 cells each)
 
-Plots:
-- ![3-axis low modality](./results/regime_3axis_quick_heatmap_low.png)
-- ![3-axis mid modality](./results/regime_3axis_quick_heatmap_mid.png)
-- ![3-axis high modality](./results/regime_3axis_quick_heatmap_high.png)
+| Q quality | `UOT > KL` | `L2 > KL` | Mean `best_ot - KL` | Mean `best_l2 - KL` |
+|---|---:|---:|---:|---:|
+| `clean` | 9 | 9 | `-0.0776` | `-0.0779` |
+| `mid` | 23 | 23 | `+0.1490` | `+0.1489` |
+| `noisy` | 36 | 36 | `+0.3929` | `+0.3950` |
 
-Artifacts:
-- `results/ot_wins_dim_sweep_cleanq_winner_table.csv`
-- `results/regime_3axis_quick_grid.csv`
-- `results/regime_3axis_quick_heatmap_low.png`
-- `results/regime_3axis_quick_heatmap_mid.png`
-- `results/regime_3axis_quick_heatmap_high.png`
+### By action dimension (36 cells each)
 
----
+| Dimension | `UOT > KL` | `L2 > KL` | Mean `best_ot - KL` | Mean `best_l2 - KL` |
+|---|---:|---:|---:|---:|
+| `2` | 27 | 27 | `+0.1963` | `+0.1965` |
+| `4` | 23 | 23 | `+0.1694` | `+0.1703` |
+| `8` | 18 | 18 | `+0.0985` | `+0.0991` |
 
-## Kept files (only win/loss evidence)
-### CSV
-- `results/lambda_sweep_highmodes_realistic_q2_s5_summary.csv`
-- `results/lambda_sweep_highmodes_realistic_q2_s5_raw.csv`
-- `results/lambda_sweep_highmodes_overtrust_q10_s5_summary.csv`
-- `results/lambda_sweep_highmodes_overtrust_q10_s5_raw.csv`
-- `results/ot_wins_dim_sweep_full_raw.csv`
-- `results/ot_wins_dim_sweep_full_summary.csv`
-- `results/ot_wins_dim_sweep_full_winner_table.csv`
-- `results/ot_wins_dim_sweep_cleanq_winner_table.csv`
-- `results/regime_3axis_quick_grid.csv`
+## 7) Detailed Interpretation
 
-### Plots
-- `results/lambda_sweep_highmodes_realistic_q2_s5_curve.png`
-- `results/lambda_sweep_highmodes_realistic_q2_s5_extra_grouped_bar.png`
-- `results/lambda_sweep_highmodes_realistic_q2_s5_extra_best_seed_strip.png`
-- `results/lambda_sweep_highmodes_realistic_q2_s5_best_comparison.png`
-- `results/lambda_sweep_highmodes_overtrust_q10_s5_curve.png`
-- `results/lambda_sweep_highmodes_overtrust_q10_s5_extra_grouped_bar.png`
-- `results/lambda_sweep_highmodes_overtrust_q10_s5_extra_best_seed_strip.png`
-- `results/lambda_sweep_highmodes_overtrust_q10_s5_best_comparison.png`
-- `results/ot_wins_dim_sweep_full_reward_curves.png`
-- `results/regime_3axis_quick_heatmap_low.png`
-- `results/regime_3axis_quick_heatmap_mid.png`
-- `results/regime_3axis_quick_heatmap_high.png`
+1. `Q clean`에서는 KL이 대체로 유리하다.
+- `clean`에서 constrained 계열의 평균 이득은 음수(`best_ot_minus_kl < 0`).
+- 즉 Q 신뢰도가 충분하면 KL의 Q-tilting이 효율적이라는 기존 가설과 일치한다.
 
----
+2. `Q noisy`에서는 constrained 계열이 일관되게 유리하다.
+- `noisy`에서 `UOT > KL`이 `36/36`.
+- Q misranking/noise가 커질수록 KL의 exponential reweighting 취약성이 커진다는 해석과 정합적이다.
 
-## Final Conclusion
-Core takeaway:
-- This is not a universal `KL vs OT` winner problem. It is a trust-allocation problem between `Q signal` and `BC prior`.
+3. `baseline` vs `rotated`는 결과 패턴이 매우 비슷하다.
+- 둘 다 평균 개선폭이 약 `+0.04` 수준.
+- 이 moderate 회전/비등방 설정만으로는 Q-quality 축 효과를 뒤집을 만큼 크지 않았다.
 
-When KL-family methods are advantageous:
-- When Q quality is reasonably reliable (lower noise or stable ranking) and fast value-tilting is beneficial.
-- In our results, Forward KL outperformed OT in low-to-moderate noise regimes.
+4. `good_shift`는 가장 강한 분리 시나리오였다.
+- `UOT > KL`, `L2 > KL` 모두 `27/27`.
+- 평균 개선폭도 `~+0.50`으로 압도적.
 
-When OT-family methods are advantageous:
-- When Q noise is high and misranking risk is substantial.
-- Especially in multimodal settings with far-away bad modes, geometry/mass constraints help prevent over-concentration on wrong modes.
-- In our results, OT consistently outperformed KL in high-noise/overtrust-KL settings and in the designed 3D/4D/5D/8D toy.
+5. L2와 UOT의 차이는 매우 작다.
+- 평균 `(L2 - UOT)`은 `+0.00058`.
+- 모든 셀에서 `|L2 - UOT| < 0.005`.
+- 이 실험군에서는 “L2 우위”라기보다 “L2와 UOT가 거의 동급”으로 보는 것이 안전하다.
 
-Practical guide within OT variants:
-- Balanced Wasserstein is stable but can be overly conservative due to strict transport cost pressure.
-- Partial OT can be strong when mode selection is right, but can be more sensitive.
-- Unbalanced OT is often the most practical default under noisy Q because marginal relaxation improves robustness.
+## 8) Conclusion (When Each Method Wins)
 
-How far to trust these results (scope):
-- These experiments provide causal evidence of regime-dependent behavior in toy low/moderate-dimensional offline settings.
-- They strongly support the selection principle, but do not guarantee absolute ranking on every real benchmark.
-- The transition boundary (where KL gives way to OT) can shift with architecture, critic stability, data quality, and hyperparameter ranges.
-- For real deployment, use `Q-quality diagnostics + lambda/ratio sweeps` before final method selection.
+1. **KL-favored regime**
+- `Q quality = clean`이고 데이터/geometry 교란이 크지 않을 때.
+
+2. **Constrained-favored regime (UOT/L2)**
+- `Q quality = mid/noisy`일 때.
+- 특히 `noisy`에서는 KL 대비 robust한 성능 우위를 거의 항상 보였다.
+
+3. **Practical takeaway**
+- “KL vs OT는 절대 우열”이 아니라 “신뢰할 신호(Q vs behavior prior)의 비율 문제”라는 메시지를 지지한다.
+- 다만 본 실험에서는 UOT와 L2가 거의 동일하게 잘 동작했으므로, OT만의 고유 이점이라고 단정하기는 어렵다.
+
+## 9) How Much To Trust These Results
+
+### What is reliable
+
+1. `Q-quality` 축의 경향성.
+- `clean -> mid -> noisy`로 갈수록 constrained 계열 상대 이득이 커지는 방향은 매우 일관적이다.
+
+2. KL의 취약 구간.
+- 강한 Q 오염(`noisy`)에서 KL이 밀리는 패턴은 재현성이 높다.
+
+### What is only moderately reliable
+
+1. UOT vs L2의 “미세한 우열”.
+- 차이가 매우 작고(대부분 1e-3 수준), 해석은 민감하다.
+
+2. 차원 효과의 절대 크기.
+- `dim=2,4,8`에서 개선폭이 감소하는 경향은 보이지만, 이 toy 설계와 예산에 종속적일 수 있다.
+
+### Hard limits (do not over-claim)
+
+1. 단일 상태 bandit toy이다.
+- 실제 offline RL의 장기 크레딧 할당/동역학 불확실성을 반영하지 않는다.
+
+2. 정책 클래스가 단순하다.
+- state-dependent policy가 아니라 static diagonal Gaussian 정책이다.
+
+3. 람다 스윕 기반의 oracle 비교다.
+- 각 셀에서 최적 람다를 고르는 방식이라 실전 단일 하이퍼파라미터 고정보다 유리할 수 있다.
+
+4. 시드 수가 작다.
+- `3 seeds` 기준이며, 미세한 차이는 쉽게 뒤집힐 수 있다.
+
+### Simple uncertainty proxy
+
+- 평균 seed-std (best-point 기준): `KL≈0.0268`, `UOT≈0.0024`, `L2≈0.0021`
+- 개선폭이 RSS std를 넘는 셀 수:
+  - `UOT > KL`: `67/108`
+  - `L2 > KL`: `67/108`
+- Q 품질별(`UOT > KL`, same for L2):
+  - `clean`: `9/36`
+  - `mid`: `22/36`
+  - `noisy`: `36/36`
+
+## 10) Repro Command
+
+```bash
+python3 scripts/run_experiment.py --mode full4 \
+  --base-config configs/ot_wins_dim_sweep.yaml \
+  --dims 2,4,8 \
+  --seeds 0,1,2 \
+  --epochs 30 \
+  --n-data 15000 \
+  --scenarios baseline,good_shift,rotated,anchor_corrupt \
+  --output-prefix regime_4axis_scenario_balanced
+```
