@@ -161,6 +161,23 @@ Notation used in this section:
 | `rotated` | `16` | `11` | `+0.00047` |
 | `anchor_corrupt` | `17` | `10` | `+0.00056` |
 
+### Wasserstein head-to-head (separate block)
+
+#### Overall (108 cells)
+
+| Pair | First > Second | Second > First | Mean `(First - Second)` |
+|---|---:|---:|---:|
+| `Wasserstein vs L2` | `0` | `108` | `-0.00362` |
+| `Wasserstein vs UOT` | `7` | `101` | `-0.00304` |
+
+#### By Q quality
+
+| Q quality | `W > L2` | `L2 > W` | Mean `(W - L2)` | `W > UOT` | `UOT > W` | Mean `(W - UOT)` |
+|---|---:|---:|---:|---:|---:|---:|
+| `clean` | `0` | `36` | `-0.00324` | `3` | `33` | `-0.00356` |
+| `mid` | `0` | `36` | `-0.00334` | `0` | `36` | `-0.00343` |
+| `noisy` | `0` | `36` | `-0.00428` | `4` | `32` | `-0.00212` |
+
 ## 8) Analysis
 
 1. KL is generally stronger in `clean` Q regimes.
